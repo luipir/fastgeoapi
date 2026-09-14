@@ -1,8 +1,8 @@
-"""`_martin_config_from_pygeoapi` (app/benchmark/martin.py).
+"""`_martin_config_from_pygeoapi` (app/martin_wrapper.py).
 
 Pure dict translation — no `martin_py` involved — so unlike
-`test_martin_bench.py` these run regardless of whether the `benchmark`
-extra is installed.
+`test_martin_wrapper.py` these run regardless of whether the
+`martin_wrapper` extra is installed.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from app.benchmark.martin import _martin_config_from_pygeoapi
+from app.martin_wrapper import _martin_config_from_pygeoapi
 
 
 def test_geojson_provider_becomes_a_geojson_source():

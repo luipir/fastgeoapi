@@ -1,24 +1,24 @@
-"""In-process tile benchmark against martin-py (opt-in, off by default).
+"""In-process tile wrapper around martin-py (opt-in, off by default).
 
 `martin-py` (https://martin.maplibre.org/) is a PyO3 binding onto
 Martin's own tile-serving code: given the same Martin config file it
 resolves sources once at load time and serves `/{source_ids}/{z}/{x}/{y}`
-tiles directly, with no HTTP hop. Mounted at `/martin-bench`, it lets the
-two tile paths — pygeoapi's provider and martin's — be measured against
-each other under the very same process and load generator.
+tiles directly, with no HTTP hop. Mounted at `/martin-wrapper`, it lets
+the two tile paths — pygeoapi's provider and martin's — be measured
+against each other under the very same process and load generator.
 
-`martin-py` is an optional dependency (the `benchmark` extra): it ships
-as a locally-built wheel, not yet on PyPI (see `[tool.uv.sources]` in
-`pyproject.toml`). `TileServer` is `None` when it isn't installed, so
+`martin-py` is an optional dependency (the `martin_wrapper` extra): it
+ships as a locally-built wheel, not yet on PyPI (see `[tool.uv.sources]`
+in `pyproject.toml`). `TileServer` is `None` when it isn't installed, so
 callers can check for that before mounting rather than importing this
 module and getting an `ImportError`.
 
 Unauthenticated by design: this mount carries none of the auth
 middleware `main._wrap_pygeoapi_asgi` wraps the pygeoapi/admin surfaces
 with. It stays out of service unless an operator explicitly points
-`FASTGEOAPI_MARTIN_BENCH_CONFIG` at a Martin config file (or sets it to
-``auto``, see `build_martin_bench_app_from_pygeoapi`), and it must never
-be enabled on a public deployment.
+`FASTGEOAPI_MARTIN_WRAPPER_CONFIG` at a Martin config file (or sets it
+to ``auto``, see `build_martin_wrapper_app_from_pygeoapi`), and it must
+never be enabled on a public deployment.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from starlette.routing import Route
 
 from app.config.logging import create_logger
 
-logger = create_logger("app.benchmark.martin")
+logger = create_logger("app.martin_wrapper")
 
 try:
     from martin_py import TileServer
@@ -82,7 +82,7 @@ def _martin_config_from_pygeoapi(pygeoapi_config: dict) -> dict[str, Any]:
 
     One pygeoapi resource maps to (at most) one martin-py source, keyed
     by the resource id — the same id then names it in
-    ``/martin-bench/{source_ids}/{z}/{x}/{y}`` and in pygeoapi's own
+    ``/martin-wrapper/{source_ids}/{z}/{x}/{y}`` and in pygeoapi's own
     ``/collections/{resource_id}/...``, so the two can be benchmarked
     tile-for-tile against the same underlying data. Only providers this
     ``martin-py`` build (features: ``geojson``, ``pmtiles``,
@@ -112,7 +112,7 @@ def _martin_config_from_pygeoapi(pygeoapi_config: dict) -> dict[str, Any]:
     -------
     dict
         A martin-py config, ready for ``yaml.safe_dump`` or direct use
-        via a temp file with :func:`build_martin_bench_app`. Only the
+        via a temp file with :func:`build_martin_wrapper_app`. Only the
         top-level keys (``geojson``, ``pmtiles``, ``duckdb``) that
         actually gained a source are present; an empty dict means no
         resource had a provider this build of martin-py can manage.
@@ -151,15 +151,15 @@ def _martin_config_from_pygeoapi(pygeoapi_config: dict) -> dict[str, Any]:
     return martin_config
 
 
-def build_martin_bench_app_from_pygeoapi(pygeoapi_config: dict) -> Starlette | None:
-    """Build the benchmark sub-app straight from a pygeoapi config (ADR-0003).
+def build_martin_wrapper_app_from_pygeoapi(pygeoapi_config: dict) -> Starlette | None:
+    """Build the wrapper sub-app straight from a pygeoapi config (ADR-0003).
 
     `TileServer` only takes a config **path** — there is no dict-based
     constructor — so the config `_martin_config_from_pygeoapi` derives is
     written to a throwaway temp file just to hand it across that one
     call, then removed again immediately: `TileServer.__init__` resolves
     every source eagerly (opens each file, reads its schema), so by the
-    time `build_martin_bench_app` returns, nothing ever reads the file
+    time `build_martin_wrapper_app` returns, nothing ever reads the file
     back from disk again. This is the same pattern
     `main._write_openapi_artifact` uses in reverse — there an in-memory
     dict is persisted for external readers; here it exists only to cross
@@ -175,24 +175,24 @@ def build_martin_bench_app_from_pygeoapi(pygeoapi_config: dict) -> Starlette | N
     Returns
     -------
     Starlette | None
-        The benchmark sub-app, or `None` when no resource had a provider
+        The wrapper sub-app, or `None` when no resource had a provider
         this martin-py build can manage — nothing to mount.
     """
     martin_config = _martin_config_from_pygeoapi(pygeoapi_config)
     if not martin_config:
         return None
 
-    fd, tmp_path = tempfile.mkstemp(prefix="martin-bench-", suffix=".yaml")
+    fd, tmp_path = tempfile.mkstemp(prefix="martin-wrapper-", suffix=".yaml")
     try:
         with os.fdopen(fd, "w") as f:
             yaml.safe_dump(martin_config, f)
-        return build_martin_bench_app(tmp_path)
+        return build_martin_wrapper_app(tmp_path)
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
 
-def build_martin_bench_app(config_path: str) -> Starlette:
-    """Build the `/{source_ids}/{z}/{x}/{y}` benchmark sub-app.
+def build_martin_wrapper_app(config_path: str) -> Starlette:
+    """Build the `/{source_ids}/{z}/{x}/{y}` wrapper sub-app.
 
     The `TileServer` is built once here, eagerly, rather than lazily on
     the first request: a fair benchmark should not have its first sample
@@ -207,13 +207,13 @@ def build_martin_bench_app(config_path: str) -> Starlette:
     Returns
     -------
     Starlette
-        A sub-app to mount at `/martin-bench`. Raises whatever
+        A sub-app to mount at `/martin-wrapper`. Raises whatever
         `TileServer` raises if `config_path` is missing or invalid —
         an operator who explicitly configured this wants to know, not
         have it silently skipped.
     """
     server = TileServer(config_path)
-    logger.info(f"martin-bench: loaded {len(server.list_sources())} source(s) from {config_path}")
+    logger.info(f"martin-wrapper: loaded {len(server.list_sources())} source(s) from {config_path}")
 
     async def get_tile(request: Request) -> Response:
         source_ids = request.path_params["source_ids"]
@@ -225,7 +225,7 @@ def build_martin_bench_app(config_path: str) -> Starlette:
                 source_ids, z, x, y, query=request.url.query or None
             )
         except Exception as e:
-            logger.warning(f"martin-bench: tile fetch failed for {source_ids}/{z}/{x}/{y}: {e}")
+            logger.warning(f"martin-wrapper: tile fetch failed for {source_ids}/{z}/{x}/{y}: {e}")
             return JSONResponse({"code": "NotFound", "description": str(e)}, status_code=404)
         headers = {"Content-Encoding": content_encoding} if content_encoding else {}
         return Response(content=data, media_type=content_type, headers=headers)

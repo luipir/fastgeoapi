@@ -101,8 +101,8 @@ def _bootstrap_pygeoapi() -> tuple[PygeoapiHolder, dict, dict]:
 
     Returns the holder, the generated OpenAPI document, and the raw
     pygeoapi config dict itself — the last one only so
-    ``FASTGEOAPI_MARTIN_BENCH_CONFIG=auto`` can derive a martin-py config
-    from it (app.benchmark.martin) without re-reading
+    ``FASTGEOAPI_MARTIN_WRAPPER_CONFIG=auto`` can derive a martin-py
+    config from it (app.martin_wrapper) without re-reading
     ``PYGEOAPI_CONFIG`` a second time.
     """
     from app.config.source import ConfigSourceError, load_config_source
@@ -354,48 +354,48 @@ def create_app(lifespan=None):
     app.mount("/admin", wrapped_admin)
     app.state.reload_manager = reload_manager
 
-    # Martin-py tile benchmark (opt-in, off by default): compares
+    # Martin-py tile wrapper (opt-in, off by default): compares
     # pygeoapi's tile provider against martin-py's in-process bindings
-    # under the same process. See app/benchmark/martin.py for why this
+    # under the same process. See app/martin_wrapper.py for why this
     # mount carries no auth wrapper and must stay off in production.
-    martin_bench_config = cfg.FASTGEOAPI_MARTIN_BENCH_CONFIG
-    if martin_bench_config:
-        from app.benchmark.martin import TileServer as _MartinTileServer
-        from app.benchmark.martin import (
-            build_martin_bench_app,
-            build_martin_bench_app_from_pygeoapi,
+    martin_wrapper_config = cfg.FASTGEOAPI_MARTIN_WRAPPER_CONFIG
+    if martin_wrapper_config:
+        from app.martin_wrapper import TileServer as _MartinTileServer
+        from app.martin_wrapper import (
+            build_martin_wrapper_app,
+            build_martin_wrapper_app_from_pygeoapi,
         )
 
         if _MartinTileServer is None:
             logger.warning(
-                "FASTGEOAPI_MARTIN_BENCH_CONFIG is set but the optional `martin-py` "
-                "benchmark dependency is not installed (install it with "
-                "`uv sync --extra benchmark`); /martin-bench will not be mounted."
+                "FASTGEOAPI_MARTIN_WRAPPER_CONFIG is set but the optional `martin-py` "
+                "wrapper dependency is not installed (install it with "
+                "`uv sync --extra martin_wrapper`); /martin-wrapper will not be mounted."
             )
-        elif martin_bench_config == "auto":
+        elif martin_wrapper_config == "auto":
             # Derived from the pygeoapi config this very boot already
             # loaded (ADR-0003) — reflects it AT BOOT: unlike the
             # pygeoapi mount itself, this does not re-derive on
             # `/admin/config/reload`.
-            martin_bench_app = build_martin_bench_app_from_pygeoapi(_pygeoapi_config)
-            if martin_bench_app is None:
+            martin_wrapper_app = build_martin_wrapper_app_from_pygeoapi(_pygeoapi_config)
+            if martin_wrapper_app is None:
                 logger.warning(
-                    "FASTGEOAPI_MARTIN_BENCH_CONFIG=auto found no resource with a "
-                    "provider this martin-py build can manage; /martin-bench will "
+                    "FASTGEOAPI_MARTIN_WRAPPER_CONFIG=auto found no resource with a "
+                    "provider this martin-py build can manage; /martin-wrapper will "
                     "not be mounted."
                 )
             else:
-                app.mount("/martin-bench", martin_bench_app)
+                app.mount("/martin-wrapper", martin_wrapper_app)
                 logger.warning(
-                    "Martin benchmark endpoint mounted at /martin-bench (config: "
+                    "Martin wrapper endpoint mounted at /martin-wrapper (config: "
                     "auto-derived from the pygeoapi config); this surface is "
                     "UNAUTHENTICATED and for benchmarking only."
                 )
         else:
-            app.mount("/martin-bench", build_martin_bench_app(martin_bench_config))
+            app.mount("/martin-wrapper", build_martin_wrapper_app(martin_wrapper_config))
             logger.warning(
-                f"Martin benchmark endpoint mounted at /martin-bench (config: "
-                f"{martin_bench_config}); this surface is UNAUTHENTICATED and for "
+                f"Martin wrapper endpoint mounted at /martin-wrapper (config: "
+                f"{martin_wrapper_config}); this surface is UNAUTHENTICATED and for "
                 "benchmarking only."
             )
 
