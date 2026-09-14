@@ -85,6 +85,16 @@ class DevConfig(GlobalConfig):
     # Reverse-DNS name of this deployment's MCP server card (SEP-2127),
     # e.g. `it.geobeyond/fastgeoapi`. Derived from APP_URI when unset.
     FASTGEOAPI_MCP_SERVER_NAME: str | None = None
+    # Path to a Martin config file (see the `martin` project), or the
+    # literal string `auto` to derive one from the pygeoapi config
+    # already loaded (app.benchmark.martin) instead of hand-writing a
+    # second file. Opt-in and off by default: when set AND the optional
+    # `martin-py` benchmark dependency is installed, mounts an
+    # UNAUTHENTICATED `/martin-bench/{source_ids}/{z}/{x}/{y}` endpoint
+    # that serves tiles straight from martin-py's in-process bindings,
+    # to benchmark it against pygeoapi's own tile provider. Never set
+    # this on a public deployment.
+    FASTGEOAPI_MARTIN_BENCH_CONFIG: str | None = None
 
     model_config = SettingsConfigDict(
         env_prefix="DEV_",
@@ -151,6 +161,16 @@ class ProdConfig(GlobalConfig):
     # Reverse-DNS name of this deployment's MCP server card (SEP-2127),
     # e.g. `it.geobeyond/fastgeoapi`. Derived from APP_URI when unset.
     FASTGEOAPI_MCP_SERVER_NAME: str | None = None
+    # Path to a Martin config file (see the `martin` project), or the
+    # literal string `auto` to derive one from the pygeoapi config
+    # already loaded (app.benchmark.martin) instead of hand-writing a
+    # second file. Opt-in and off by default: when set AND the optional
+    # `martin-py` benchmark dependency is installed, mounts an
+    # UNAUTHENTICATED `/martin-bench/{source_ids}/{z}/{x}/{y}` endpoint
+    # that serves tiles straight from martin-py's in-process bindings,
+    # to benchmark it against pygeoapi's own tile provider. Never set
+    # this on a public deployment.
+    FASTGEOAPI_MARTIN_BENCH_CONFIG: str | None = None
 
     model_config = SettingsConfigDict(
         env_prefix="PROD_",

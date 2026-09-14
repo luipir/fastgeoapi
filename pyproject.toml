@@ -61,6 +61,14 @@ geoparquet = [
     # extra nor the dependency: `obstore[fsspec]` installs nothing.
     "fsspec>=2024.6",
 ]
+# `/martin-bench` (app/benchmark/martin.py): in-process comparison of
+# pygeoapi's tile path against martin's, via martin-py's PyO3 bindings.
+# Sourced from a locally-built wheel (see [tool.uv.sources]) rather than
+# PyPI: martin-py isn't published there yet. `cp312`-only for now, hence
+# the marker — the project's `<3.14` 3.13 lane resolves without it.
+benchmark = [
+    "martin-py>=0.1.0,<0.2; python_version < '3.13'",
+]
 
 [dependency-groups]
 dev = [
@@ -100,6 +108,10 @@ docs = [
 [tool.uv]
 
 [tool.uv.sources]
+# Local build, not yet on PyPI — see the `benchmark` extra above. Path is
+# relative to this file; rebuild with `maturin build --release` in the
+# `martin-py` crate if the wheel goes missing.
+martin-py = { path = "../martin/target/wheels/martin_py-0.1.0-cp312-cp312-manylinux_2_39_x86_64.whl" }
 
 [tool.hatch.build.targets.sdist]
 include = [

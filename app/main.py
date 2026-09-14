@@ -91,13 +91,19 @@ def _write_openapi_artifact(openapi: dict) -> None:
         logger.warning(f"Could not write the OpenAPI artifact to {target}: {e}")
 
 
-def _bootstrap_pygeoapi() -> tuple[PygeoapiHolder, dict]:
+def _bootstrap_pygeoapi() -> tuple[PygeoapiHolder, dict, dict]:
     """Config from the storage source → in-memory dicts → sub-app in a holder.
 
     One code path for local paths and cloud URLs (ADR-0003): the config
     never touches disk nor env vars. The holder is the single target for
     both the externally-mounted (auth-wrapped) surface and the MCP
     ``ASGITransport``, so a reload swap reaches every consumer at once.
+
+    Returns the holder, the generated OpenAPI document, and the raw
+    pygeoapi config dict itself — the last one only so
+    ``FASTGEOAPI_MARTIN_BENCH_CONFIG=auto`` can derive a martin-py config
+    from it (app.benchmark.martin) without re-reading
+    ``PYGEOAPI_CONFIG`` a second time.
     """
     from app.config.source import ConfigSourceError, load_config_source
     from app.pygeoapi.factory import (
@@ -147,7 +153,7 @@ def _bootstrap_pygeoapi() -> tuple[PygeoapiHolder, dict]:
     _write_openapi_artifact(openapi)
     holder = PygeoapiHolder()
     holder.swap(subapp, etag=document.etag)
-    return holder, openapi
+    return holder, openapi, document.config
 
 
 def _wrap_pygeoapi_asgi(asgi_app):
@@ -348,6 +354,51 @@ def create_app(lifespan=None):
     app.mount("/admin", wrapped_admin)
     app.state.reload_manager = reload_manager
 
+    # Martin-py tile benchmark (opt-in, off by default): compares
+    # pygeoapi's tile provider against martin-py's in-process bindings
+    # under the same process. See app/benchmark/martin.py for why this
+    # mount carries no auth wrapper and must stay off in production.
+    martin_bench_config = cfg.FASTGEOAPI_MARTIN_BENCH_CONFIG
+    if martin_bench_config:
+        from app.benchmark.martin import TileServer as _MartinTileServer
+        from app.benchmark.martin import (
+            build_martin_bench_app,
+            build_martin_bench_app_from_pygeoapi,
+        )
+
+        if _MartinTileServer is None:
+            logger.warning(
+                "FASTGEOAPI_MARTIN_BENCH_CONFIG is set but the optional `martin-py` "
+                "benchmark dependency is not installed (install it with "
+                "`uv sync --extra benchmark`); /martin-bench will not be mounted."
+            )
+        elif martin_bench_config == "auto":
+            # Derived from the pygeoapi config this very boot already
+            # loaded (ADR-0003) — reflects it AT BOOT: unlike the
+            # pygeoapi mount itself, this does not re-derive on
+            # `/admin/config/reload`.
+            martin_bench_app = build_martin_bench_app_from_pygeoapi(_pygeoapi_config)
+            if martin_bench_app is None:
+                logger.warning(
+                    "FASTGEOAPI_MARTIN_BENCH_CONFIG=auto found no resource with a "
+                    "provider this martin-py build can manage; /martin-bench will "
+                    "not be mounted."
+                )
+            else:
+                app.mount("/martin-bench", martin_bench_app)
+                logger.warning(
+                    "Martin benchmark endpoint mounted at /martin-bench (config: "
+                    "auto-derived from the pygeoapi config); this surface is "
+                    "UNAUTHENTICATED and for benchmarking only."
+                )
+        else:
+            app.mount("/martin-bench", build_martin_bench_app(martin_bench_config))
+            logger.warning(
+                f"Martin benchmark endpoint mounted at /martin-bench (config: "
+                f"{martin_bench_config}); this surface is UNAUTHENTICATED and for "
+                "benchmarking only."
+            )
+
     app.logger = create_logger(name="app.main")
 
     return app
@@ -513,7 +564,7 @@ def create_mcp_server(
 # Programmatic bootstrap (ADR-0003): config from the storage source,
 # openapi generated in memory, sub-app held for atomic swaps. The MCP
 # transport and the auth-wrapped mount both point at this holder.
-_pygeoapi_holder, _pygeoapi_openapi = _bootstrap_pygeoapi()
+_pygeoapi_holder, _pygeoapi_openapi, _pygeoapi_config = _bootstrap_pygeoapi()
 
 # Absent by default, so `create_app` can ask for them without caring
 # whether the MCP surface was enabled at all.
