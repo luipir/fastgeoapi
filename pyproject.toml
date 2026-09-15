@@ -61,7 +61,7 @@ geoparquet = [
     # extra nor the dependency: `obstore[fsspec]` installs nothing.
     "fsspec>=2024.6",
 ]
-# `/martin-wrapper` (app/martin_wrapper.py): in-process comparison of
+# `/martin-wrapper` (app/tiles/martin_wrapper.py): in-process comparison of
 # pygeoapi's tile path against martin's, via martin-py's PyO3 bindings.
 # Sourced from a locally-built wheel (see [tool.uv.sources]) rather than
 # PyPI: martin-py isn't published there yet. `cp312`-only for now, hence

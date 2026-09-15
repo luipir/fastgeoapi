@@ -1,4 +1,4 @@
-"""Throughput/latency benchmark for `build_martin_wrapper_app` (app/martin_wrapper.py).
+"""Throughput/latency benchmark for `build_martin_wrapper_app` (app/tiles/martin_wrapper.py).
 
 Not a correctness test — `test_martin_wrapper.py` already covers that. This
 drives `get_tile` requests through the sub-app's `TestClient` (in-process,
@@ -48,7 +48,7 @@ MAX_ZOOM = 14
 @pytest.mark.benchmark
 def test_build_martin_wrapper_app_get_tile_benchmark(tmp_path, capsys):
     """Warm up with 100 random tiles, then benchmark 1000 more."""
-    from app.martin_wrapper import build_martin_wrapper_app
+    from app.tiles.martin_wrapper import build_martin_wrapper_app
 
     config_path = _write_martin_config(tmp_path, source_id=SOURCE_ID)
     sub_app = build_martin_wrapper_app(str(config_path))

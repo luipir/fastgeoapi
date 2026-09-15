@@ -1,4 +1,4 @@
-"""`_martin_config_from_pygeoapi` (app/martin_wrapper.py).
+"""`_martin_config_from_pygeoapi` (app/tiles/martin_wrapper.py).
 
 Pure dict translation — no `martin_py` involved — so unlike
 `test_martin_wrapper.py` these run regardless of whether the
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from app.martin_wrapper import _martin_config_from_pygeoapi
+from app.tiles.martin_wrapper import _martin_config_from_pygeoapi
 
 
 def test_geojson_provider_becomes_a_geojson_source():

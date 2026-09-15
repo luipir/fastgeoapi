@@ -37,7 +37,7 @@ from starlette.routing import Route
 
 from app.config.logging import create_logger
 
-logger = create_logger("app.martin_wrapper")
+logger = create_logger("app.tiles.martin_wrapper")
 
 try:
     from martin_py import TileServer

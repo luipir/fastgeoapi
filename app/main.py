@@ -102,7 +102,7 @@ def _bootstrap_pygeoapi() -> tuple[PygeoapiHolder, dict, dict]:
     Returns the holder, the generated OpenAPI document, and the raw
     pygeoapi config dict itself — the last one only so
     ``FASTGEOAPI_MARTIN_WRAPPER_CONFIG=auto`` can derive a martin-py
-    config from it (app.martin_wrapper) without re-reading
+    config from it (app.tiles.martin_wrapper) without re-reading
     ``PYGEOAPI_CONFIG`` a second time.
     """
     from app.config.source import ConfigSourceError, load_config_source
@@ -356,12 +356,12 @@ def create_app(lifespan=None):
 
     # Martin-py tile wrapper (opt-in, off by default): compares
     # pygeoapi's tile provider against martin-py's in-process bindings
-    # under the same process. See app/martin_wrapper.py for why this
+    # under the same process. See app/tiles/martin_wrapper.py for why this
     # mount carries no auth wrapper and must stay off in production.
     martin_wrapper_config = cfg.FASTGEOAPI_MARTIN_WRAPPER_CONFIG
     if martin_wrapper_config:
-        from app.martin_wrapper import TileServer as _MartinTileServer
-        from app.martin_wrapper import (
+        from app.tiles.martin_wrapper import TileServer as _MartinTileServer
+        from app.tiles.martin_wrapper import (
             build_martin_wrapper_app,
             build_martin_wrapper_app_from_pygeoapi,
         )

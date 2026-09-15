@@ -1,4 +1,4 @@
-"""The `/martin-wrapper` benchmark endpoint (app/martin_wrapper.py).
+"""The `/martin-wrapper` benchmark endpoint (app/tiles/martin_wrapper.py).
 
 Opt-in and off by default: mounted only when `FASTGEOAPI_MARTIN_WRAPPER_CONFIG`
 names a Martin config file AND the optional `martin-py` dependency (the
@@ -30,11 +30,11 @@ def _write_martin_config(tmp_path: Path, source_id: str = "wrapper_source") -> P
     return config_path
 
 
-# --- app/martin_wrapper.py directly ------------------------------------------
+# --- app/tiles/martin_wrapper.py directly -----------------------------------
 
 
 def test_build_martin_wrapper_app_serves_a_tile(tmp_path):
-    from app.martin_wrapper import build_martin_wrapper_app
+    from app.tiles.martin_wrapper import build_martin_wrapper_app
 
     config_path = _write_martin_config(tmp_path)
     sub_app = build_martin_wrapper_app(str(config_path))
@@ -49,7 +49,7 @@ def test_build_martin_wrapper_app_serves_a_tile(tmp_path):
 
 
 def test_build_martin_wrapper_app_unknown_source_is_404(tmp_path):
-    from app.martin_wrapper import build_martin_wrapper_app
+    from app.tiles.martin_wrapper import build_martin_wrapper_app
 
     config_path = _write_martin_config(tmp_path)
     sub_app = build_martin_wrapper_app(str(config_path))
@@ -62,7 +62,7 @@ def test_build_martin_wrapper_app_unknown_source_is_404(tmp_path):
 
 
 def test_build_martin_wrapper_app_rejects_bad_config(tmp_path):
-    from app.martin_wrapper import build_martin_wrapper_app
+    from app.tiles.martin_wrapper import build_martin_wrapper_app
 
     with pytest.raises(RuntimeError):
         build_martin_wrapper_app(str(tmp_path / "no-such-config.yaml"))
@@ -72,7 +72,7 @@ def test_build_martin_wrapper_app_rejects_bad_config(tmp_path):
 
 
 def test_build_martin_wrapper_app_from_pygeoapi_serves_a_tile():
-    from app.martin_wrapper import build_martin_wrapper_app_from_pygeoapi
+    from app.tiles.martin_wrapper import build_martin_wrapper_app_from_pygeoapi
 
     pygeoapi_config = {
         "resources": {
@@ -92,7 +92,7 @@ def test_build_martin_wrapper_app_from_pygeoapi_serves_a_tile():
 
 
 def test_build_martin_wrapper_app_from_pygeoapi_returns_none_when_nothing_manageable():
-    from app.martin_wrapper import build_martin_wrapper_app_from_pygeoapi
+    from app.tiles.martin_wrapper import build_martin_wrapper_app_from_pygeoapi
 
     pygeoapi_config = {
         "resources": {"obs": {"providers": [{"type": "feature", "name": "CSV", "data": "obs.csv"}]}}
@@ -102,7 +102,7 @@ def test_build_martin_wrapper_app_from_pygeoapi_returns_none_when_nothing_manage
 
 def test_build_martin_wrapper_app_from_pygeoapi_leaves_no_temp_file_behind():
     """The derived config only ever crosses the TileServer(path) call."""
-    from app import martin_wrapper as martin_wrapper_mod
+    from app.tiles import martin_wrapper as martin_wrapper_mod
 
     seen: list[Path] = []
     original_mkstemp = martin_wrapper_mod.tempfile.mkstemp

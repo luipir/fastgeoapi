@@ -5,7 +5,7 @@ Used by `test_martin_wrapper_benchmark.py` (the small geojson fixture) and
 scale). Both follow the same protocol: warm up on discarded requests, then
 time a distinct batch — every request targets its own random `{z}/{x}/{y}`,
 so nothing after warm-up repeats a tile a cache could have memoized. The
-wrapper itself caches nothing (`app/martin_wrapper.py` builds the
+wrapper itself caches nothing (`app/tiles/martin_wrapper.py` builds the
 `TileServer` once and calls `get_tile` fresh every request); varying the
 coordinates is what keeps DuckDB/martin-py's own query-plan caches, and not
 just one lucky response, off the measurement.

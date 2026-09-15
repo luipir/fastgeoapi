@@ -3,7 +3,7 @@
 Three dataset sizes — 100K, 1M and 10M randomly-placed points — each its own
 GeoParquet file, generated once per test session by DuckDB itself
 (`app.provider.duckdb_.connect`, the same engine `test_geoparquet_provider.py`
-uses to build its fixture): the `duckdb` source name in `app/martin_wrapper.py`
+uses to build its fixture): the `duckdb` source name in `app/tiles/martin_wrapper.py`
 and Martin's own config is DuckDB-*read*, but the file on disk is GeoParquet.
 
 Same protocol as `test_martin_wrapper_benchmark.py` (see
@@ -202,7 +202,7 @@ def duckdb_dataset_10m(tmp_path_factory) -> Path:
 
 
 def _build_duckdb_wrapper_app(tmp_path: Path, dataset_path: Path, layer_id: str):
-    from app.martin_wrapper import build_martin_wrapper_app
+    from app.tiles.martin_wrapper import build_martin_wrapper_app
 
     config_path = tmp_path / f"martin-config-{layer_id}.yaml"
     config_path.write_text(

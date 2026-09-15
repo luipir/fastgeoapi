@@ -87,7 +87,7 @@ class DevConfig(GlobalConfig):
     FASTGEOAPI_MCP_SERVER_NAME: str | None = None
     # Path to a Martin config file (see the `martin` project), or the
     # literal string `auto` to derive one from the pygeoapi config
-    # already loaded (app.martin_wrapper) instead of hand-writing a
+    # already loaded (app.tiles.martin_wrapper) instead of hand-writing a
     # second file. Opt-in and off by default: when set AND the optional
     # `martin-py` wrapper dependency is installed, mounts an
     # UNAUTHENTICATED `/martin-wrapper/{source_ids}/{z}/{x}/{y}` endpoint
@@ -163,7 +163,7 @@ class ProdConfig(GlobalConfig):
     FASTGEOAPI_MCP_SERVER_NAME: str | None = None
     # Path to a Martin config file (see the `martin` project), or the
     # literal string `auto` to derive one from the pygeoapi config
-    # already loaded (app.martin_wrapper) instead of hand-writing a
+    # already loaded (app.tiles.martin_wrapper) instead of hand-writing a
     # second file. Opt-in and off by default: when set AND the optional
     # `martin-py` wrapper dependency is installed, mounts an
     # UNAUTHENTICATED `/martin-wrapper/{source_ids}/{z}/{x}/{y}` endpoint
