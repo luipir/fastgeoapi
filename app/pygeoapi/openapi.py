@@ -180,6 +180,98 @@ def fix_queryables_response_schema(doc: dict) -> dict:
     return doc
 
 
+def describe_tilesets(doc: dict) -> dict:
+    """Write in the tileset description the server already answers.
+
+    `GET /collections/{collectionId}/tiles/{tileMatrixSetId}` is the
+    tileset resource. pygeoapi routes it (`starlette_app.py:195-203`) and
+    answers it — measured against the demo on 2026-09-16, 200 with the
+    tileset document — while `api/tiles.py` writes only the list at
+    `…/tiles` (line 471) and the tile data path (line 499). Nothing in
+    between, for any collection.
+
+    OGC API - Tiles states it with the verb it reserves for requirements:
+    `/req/tileset/description`, "the tileset endpoint SHALL support
+    negotiation of an application/json response". So the document
+    understates a server that conforms, and since the MCP tools are
+    generated from the document, an agent has no way to describe a
+    tileset it can already fetch tiles from.
+
+    The operation is built from the list beside it rather than written
+    from scratch: same tags, same error responses, same parameter
+    references, so the addition reads like the rest of the document
+    instead of like a patch. Remove once fixed upstream in pygeoapi.
+    """
+    from pygeoapi.openapi import OPENAPI_YAML
+
+    tiles_openapi = OPENAPI_YAML["oapit"]
+    tile_set_response = f"{tiles_openapi.rsplit('/', 1)[0]}/responses/tiles-core/rTileSet.yaml"
+
+    paths = doc.get("paths", {})
+    for path in list(paths):
+        if not path.endswith("/tiles"):
+            continue
+        target = f"{path}/{{tileMatrixSetId}}"
+        listing = paths[path].get("get")
+        if target in paths or not listing:
+            continue
+
+        responses = dict(listing.get("responses", {}))
+        responses["200"] = {"$ref": tile_set_response}
+
+        operation_id = listing.get("operationId", "")
+        paths[target] = {
+            "get": {
+                "tags": list(listing.get("tags", [])),
+                "summary": "Describe a tileset of this collection",
+                "description": listing.get("description", ""),
+                "operationId": operation_id.replace("getTileSetsList", "getTileSet"),
+                "parameters": [
+                    {"$ref": f"{tiles_openapi}#/components/parameters/tileMatrixSetId"},
+                    *listing.get("parameters", []),
+                ],
+                "responses": responses,
+            }
+        }
+    return doc
+
+
+def drop_unused_tags(doc: dict) -> dict:
+    """Declare only the tags the document's own operations use.
+
+    Each pygeoapi API module returns a module-level tag object whether or
+    not it contributes a path, and the guard meant to drop them
+    (``pygeoapi/openapi.py:556``, 0.24) reads ``if not sub_tags and not
+    sub_paths`` — a conjunction over a list literal that is never empty,
+    so it never fires. Those module tags then go unused even when their
+    spec group is active, because operations are tagged with the id of
+    the collection or process they serve: on the demo, ``tiles`` and
+    ``features`` had no operation while tile and feature collections were
+    being served. Measured there on 2026-09-15: fifteen declared tags,
+    eight of them with no operation and no description.
+
+    An unused tag is not invalid, it is noise that spreads: a renderer
+    draws an empty section for each, and a generator makes an empty group.
+    Which is why the rule here is not the registry's — ``active_specs``
+    answers what the configuration mounts, and would keep ``tiles``
+    anyway — but the document's own: a tag survives if an operation
+    claims it. Remove once fixed upstream in pygeoapi.
+    """
+    if not doc.get("tags"):
+        return doc
+    used = {
+        tag
+        for item in doc.get("paths", {}).values()
+        for operation in item.values()
+        # A path item also holds `parameters`, `servers`, `summary` and
+        # may hold a `$ref`: only the operations carry tags.
+        if isinstance(operation, dict)
+        for tag in operation.get("tags", [])
+    }
+    doc["tags"] = [tag for tag in doc["tags"] if tag.get("name") in used]
+    return doc
+
+
 def generate_openapi_document(cfg_file, output_format="yaml"):
     """Generate the pygeoapi OpenAPI document with fastgeoapi corrections.
 

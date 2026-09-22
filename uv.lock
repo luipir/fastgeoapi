@@ -158,6 +158,18 @@ wheels = [
 ]
 
 [[package]]
+name = "blockbuster"
+version = "1.5.27"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "forbiddenfruit", marker = "implementation_name == 'cpython'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ff/c3/21678f5b979be2cbf0e68352f7330a84ea4e24674023e4de981c78a218cd/blockbuster-1.5.27.tar.gz", hash = "sha256:b8e9d988b9b91ba468c94530e219f26a00d3ff616b39ebf3da561a2a3eea9dd4", size = 96732, upload-time = "2026-08-17T23:53:13.378Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/c5/092e631bc1fba86f0a822be65c137c90a71b71ba0a0865e7e9a21f6ca05e/blockbuster-1.5.27-py3-none-any.whl", hash = "sha256:f0acf153d22a791bf5f142935332ef8530960ec215541b48a6037e6cea0a8645", size = 13517, upload-time = "2026-08-17T23:53:14.625Z" },
+]
+
+[[package]]
 name = "boto3"
 version = "1.43.63"
 source = { registry = "https://pypi.org/simple" }
@@ -862,7 +874,7 @@ wheels = [
 
 [[package]]
 name = "fastgeoapi"
-version = "0.0.12"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
@@ -900,10 +912,14 @@ geoparquet = [
 martin-wrapper = [
     { name = "martin-py", marker = "python_full_version < '3.13'" },
 ]
+pmtiles = [
+    { name = "pmtiles" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "bandit" },
+    { name = "blockbuster" },
     { name = "boto3" },
     { name = "canaille", extra = ["sqlite"] },
     { name = "commitizen" },
@@ -912,6 +928,7 @@ dev = [
     { name = "joserfc" },
     { name = "ministack" },
     { name = "nox", extra = ["uv"] },
+    { name = "ogcapi-registry" },
     { name = "openapi-resolver" },
     { name = "pre-commit" },
     { name = "pre-commit-hooks" },
@@ -949,6 +966,7 @@ requires-dist = [
     { name = "martin-py", marker = "python_full_version < '3.13' and extra == 'martin-wrapper'", path = "../martin/target/wheels/martin_py-0.1.0-cp312-cp312-manylinux_2_39_x86_64.whl" },
     { name = "obstore", specifier = ">=0.11.1,<0.12" },
     { name = "openapi-pydantic", specifier = ">=0.5.1,<=1.0" },
+    { name = "pmtiles", marker = "extra == 'pmtiles'", specifier = ">=3.7,<4" },
     { name = "psycopg2-binary", specifier = ">=2.9.10,<3" },
     { name = "pydantic-settings", specifier = ">=2.9.1,<3" },
     { name = "pygeoapi", specifier = ">=0.24,<0.25" },
@@ -961,11 +979,12 @@ requires-dist = [
     { name = "starlette", specifier = ">=1.3.1,<2.0" },
     { name = "typer", specifier = ">=0.15.3,<0.28" },
 ]
-provides-extras = ["geoparquet", "martin-wrapper"]
+provides-extras = ["geoparquet", "pmtiles", "martin-wrapper"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = ">=1.9.2,<2" },
+    { name = "blockbuster", specifier = ">=1.5,<2" },
     { name = "boto3", specifier = ">=1.35" },
     { name = "canaille", extras = ["sqlite"], specifier = ">=0.0.74" },
     { name = "commitizen", specifier = ">=4.11,<5" },
@@ -974,6 +993,7 @@ dev = [
     { name = "joserfc", specifier = ">=1.6,<1.7" },
     { name = "ministack", specifier = ">=1.5,<2" },
     { name = "nox", extras = ["uv"], specifier = ">=2025.11.12" },
+    { name = "ogcapi-registry", specifier = "==0.4.0" },
     { name = "openapi-resolver", specifier = ">=0.0.6,<0.0.7" },
     { name = "pre-commit", specifier = ">=4.0.0,<5" },
     { name = "pre-commit-hooks", specifier = ">=6,<7" },
@@ -1149,6 +1169,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/91/f1/605a56d4ea217b307
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/d2/97adf2ec7af95522573e6dd5493ee84792d0fbfb2def010c4a581b8d6e5e/flask_wtf-1.3.0-py3-none-any.whl", hash = "sha256:dc5e3a4ce97f75c47bf6c1c72ad2c3b7bdf579a2ed13aebcc5d3d81fe2571160", size = 13959, upload-time = "2026-04-23T07:41:53.828Z" },
 ]
+
+[[package]]
+name = "forbiddenfruit"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/79/d4f20e91327c98096d605646bdc6a5ffedae820f38d378d3515c42ec5e60/forbiddenfruit-0.1.4.tar.gz", hash = "sha256:e3f7e66561a29ae129aac139a85d610dbf3dd896128187ed5454b6421f624253", size = 43756, upload-time = "2021-01-16T21:03:35.401Z" }
 
 [[package]]
 name = "fsspec"
@@ -2135,6 +2161,21 @@ wheels = [
 ]
 
 [[package]]
+name = "ogcapi-registry"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "openapi-pydantic" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4a/2e/42a7766f1aef89a05e090178868c68de9e283cca63b80803b5a41d1b7cee/ogcapi_registry-0.4.0.tar.gz", hash = "sha256:4a81fdfbdd83ee25112f12e3ad9a312335437b18815ff9094633cd1163939d80", size = 38648, upload-time = "2026-09-16T16:30:36.876Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/61/2d20496699e6485ab0e28a0ae200833a71da2bfa9d1c6fce329680dc762c/ogcapi_registry-0.4.0-py3-none-any.whl", hash = "sha256:518e67c56da563f6aae1859f074c53977e5c0967534dc55b38306cc750071f35", size = 51393, upload-time = "2026-09-16T16:30:35.617Z" },
+]
+
+[[package]]
 name = "openapi-pydantic"
 version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2260,6 +2301,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
+name = "pmtiles"
+version = "3.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/16/3e/47e371add5ba09615c95c5ef72d8c3be471819d6dce07bae26c8e15d0687/pmtiles-3.7.0.tar.gz", hash = "sha256:ed8b04d550d104c81a759c9cc07bfc5743750f62e751f840425f4b9f4bb903df", size = 14582, upload-time = "2026-02-10T16:00:22Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/de/c0f177fd73818e0d671903ed986d4541674b0fad4365c7ecfd5a0af23a6d/pmtiles-3.7.0-py3-none-any.whl", hash = "sha256:d1a7a7a166ce3c5c8756cc2c8e4b0aa55e3d854fbd4517c963de16c39b631b14", size = 16848, upload-time = "2026-02-10T16:00:20.925Z" },
 ]
 
 [[package]]

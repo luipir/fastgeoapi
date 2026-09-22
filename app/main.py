@@ -25,6 +25,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.config.app import configuration as cfg
 from app.config.logging import create_logger, silence_probe_access_logs
+from app.mcp.route_maps import openapi_route_maps
 from app.middleware.mcp_identity import MCPClientIdentityMiddleware
 from app.middleware.oauth2 import Oauth2Middleware
 from app.middleware.proxy import (
@@ -540,6 +541,7 @@ def create_mcp_server(
         client=api_client,
         name="OGC API MCP",
         auth=auth,
+        route_maps=openapi_route_maps(),
     )
 
     # Make requests attributable to a client. Neither the User-Agent nor
@@ -580,14 +582,22 @@ if cfg.FASTGEOAPI_WITH_MCP:
     if mcp_app is not None:
         from app.mcp.card import SERVER_CARD_PATH, ServerCard, server_card_route
 
-        # Built from the OpenAPI the tools come from; an invalid explicit
-        # name refuses startup here rather than publishing a bad card.
-        server_card = ServerCard(
-            _pygeoapi_openapi,
-            base_url=_public_base_url(),
-            context=cfg.FASTGEOAPI_CONTEXT,
-            name=getattr(cfg, "FASTGEOAPI_MCP_SERVER_NAME", None),
-        )
+        # Built from the OpenAPI the tools come from. The card is
+        # discovery, not the service: whatever goes wrong here — an
+        # invalid explicit name, metadata the image does not carry — is
+        # logged and the card is not published, while the API and the MCP
+        # endpoint start regardless. The first deploy of this feature
+        # died at import on a surprise; there will not be a second.
+        try:
+            server_card = ServerCard(
+                _pygeoapi_openapi,
+                base_url=_public_base_url(),
+                context=cfg.FASTGEOAPI_CONTEXT,
+                name=getattr(cfg, "FASTGEOAPI_MCP_SERVER_NAME", None),
+            )
+        except Exception as exc:
+            server_card = None
+            logger.error(f"MCP server card not published: {type(exc).__name__}: {exc}")
 
         @asynccontextmanager
         async def combined_lifespan(app):
@@ -642,9 +652,11 @@ if cfg.FASTGEOAPI_WITH_MCP:
                     app.router.routes.insert(0, alias)
                     logger.info(f"Mounted OAuth route alias at root: {alias.path}")
 
-        # SEP-2127 server card: public, at the root, only while MCP is on.
-        app.router.routes.insert(0, server_card_route(server_card))
-        logger.info(f"Mounted MCP server card at {SERVER_CARD_PATH}")
+        # SEP-2127 server card: public, at the root, only while MCP is on
+        # — and only when it could be built.
+        if server_card is not None:
+            app.router.routes.insert(0, server_card_route(server_card))
+            logger.info(f"Mounted MCP server card at {SERVER_CARD_PATH}")
 
         app.mount("/mcp", mcp_app)
         # Starlette's Mount only matches "/mcp/..." — a bare "/mcp" falls

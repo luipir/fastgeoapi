@@ -8,6 +8,7 @@ this module reduces both to the contract shapes (bytes,
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from app.provider.storage.base import ObjectMeta
@@ -18,6 +19,17 @@ class ObstoreStore:
 
     def __init__(self, store: Any):
         self._store = store
+
+    @property
+    def backend(self) -> Any:
+        """The obstore store itself, for libraries that speak obstore natively.
+
+        async-tiff and its siblings take the store object and do their
+        own ranged reads through it; handing it over keeps the provider
+        free of any obstore import while the storage layer stays the one
+        place that knows how the store was built.
+        """
+        return self._store
 
     def get(self, path: str) -> bytes:
         """Read the whole object as bytes."""
@@ -47,6 +59,33 @@ class ObstoreStore:
     def keys(self, prefix: str = "") -> list[str]:
         """Object keys under a prefix, recursively."""
         return [entry["path"] for batch in self._store.list(prefix) for entry in batch]
+
+    def get_range(self, path: str, offset: int, length: int) -> bytes:
+        """``length`` bytes from ``offset`` in one ranged request."""
+        return bytes(self._store.get_range(path, start=offset, length=length))
+
+    async def aget_range(self, path: str, offset: int, length: int) -> bytes:
+        """Async twin of :meth:`get_range`."""
+        return bytes(await self._store.get_range_async(path, start=offset, length=length))
+
+    def get_ranges(self, path: str, ranges: Sequence[tuple[int, int]]) -> list[bytes]:
+        """Several ranges at once; obstore coalesces neighbours less than 1 MiB apart."""
+        if not ranges:
+            return []
+        starts = [offset for offset, _ in ranges]
+        lengths = [length for _, length in ranges]
+        return [
+            bytes(chunk) for chunk in self._store.get_ranges(path, starts=starts, lengths=lengths)
+        ]
+
+    async def aget_ranges(self, path: str, ranges: Sequence[tuple[int, int]]) -> list[bytes]:
+        """Async twin of :meth:`get_ranges`."""
+        if not ranges:
+            return []
+        starts = [offset for offset, _ in ranges]
+        lengths = [length for _, length in ranges]
+        chunks = await self._store.get_ranges_async(path, starts=starts, lengths=lengths)
+        return [bytes(chunk) for chunk in chunks]
 
     @staticmethod
     def _meta(raw: dict) -> ObjectMeta:

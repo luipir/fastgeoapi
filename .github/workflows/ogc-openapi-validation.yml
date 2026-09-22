@@ -17,21 +17,32 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
+      # Pinned like everything else this workflow runs. It decides
+      # whether this deployment is reported as conformant, so the verdict
+      # should not be able to change without a commit.
+      #
+      # 0.4.0 stops demanding two things the standards do not: the tiling
+      # schemes endpoint, which OGC API - Tiles states as a SHOULD and
+      # only where the tile matrix set is absent from a register, and
+      # `bbox-crs` on the single-feature path, which Features Part 2
+      # Requirement 10 ties to operations supporting `bbox`. It also
+      # carries the catalogue of published conformance classes, and
+      # records each expectation with the clause and the verb behind it.
       - name: Install ogcapi-registry
-        run: uv add ogcapi-registry
+        run: uv add ogcapi-registry==0.4.0
 
       - name: Validate OGC API Server
         id: ogcapi-validate
@@ -54,6 +65,7 @@ jobs:
               validate_ogc_api,
               get_specification_keys,
               group_conformance_by_spec,
+              validate_conformance,
           )
 
           SERVER_URL = os.environ.get('SERVER_URL', 'https://fastgeoapi.fly.dev/geoapi')
@@ -144,6 +156,22 @@ jobs:
                   for cc in classes:
                       print(f'  - {cc.conformance_class_name}')
               print()
+              # What the published standards say about that declaration.
+              # Nothing here fails the run: a class the catalogue does not
+              # know may come from a standard it does not cover yet, and a
+              # sibling that is absent is usually absent on purpose. Both
+              # are worth reading.
+              published = validate_conformance(conformance_classes)
+              if published.unrecognised:
+                  print(f'Not defined by any catalogued standard ({len(published.unrecognised)}):')
+                  for uri in published.unrecognised:
+                      print(f'  - {uri}')
+                  print()
+              if published.undeclared_siblings:
+                  print(f'Published by a standard in use, not declared here ({len(published.undeclared_siblings)}):')
+                  for known in published.undeclared_siblings:
+                      print(f'  - {known.spec}/conf/{known.name}   [OGC {known.document}]')
+                  print()
           except Exception as e:
               print(f'ERROR: Could not fetch conformance classes: {e}')
               if auth_required:
@@ -221,6 +249,22 @@ jobs:
                           f.write(f'- {cc.conformance_class_name}\\n')
                       f.write('\\n')
 
+              if conformance_classes:
+                  published = validate_conformance(conformance_classes)
+                  if published.undeclared_siblings:
+                      f.write('## Published, and not declared here\\n\\n')
+                      f.write('Read rather than failed on: most of these are optional. ')
+                      f.write('A capability this server implements and does not advertise ')
+                      f.write('is invisible to a client that negotiates on the declaration.\\n\\n')
+                      for known in published.undeclared_siblings:
+                          f.write(f'- `{known.spec}/conf/{known.name}` (OGC {known.document})\\n')
+                      f.write('\\n')
+                  if published.unrecognised:
+                      f.write('## Declared, and not found in any catalogued standard\\n\\n')
+                      for uri in published.unrecognised:
+                          f.write(f'- `{uri}`\\n')
+                      f.write('\\n')
+
               f.write('## Summary\\n\\n')
               f.write('| Severity | Count |\\n')
               f.write('|----------|-------|\\n')
@@ -285,7 +329,7 @@ jobs:
 
       - name: Upload validation results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ogcapi-validation-results
           path: |

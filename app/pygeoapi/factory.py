@@ -34,7 +34,12 @@ from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from app.pygeoapi.api import patch_validate_datetime_overflow
-from app.pygeoapi.openapi import fix_queryables_response_schema
+from app.pygeoapi.api_async import tiles as async_tiles
+from app.pygeoapi.openapi import (
+    describe_tilesets,
+    drop_unused_tags,
+    fix_queryables_response_schema,
+)
 from app.pygeoapi.plugin import invalidate_plugin_cache, patch_load_plugin
 
 # The fastgeoapi runtime patches apply once, at factory import: every
@@ -124,6 +129,8 @@ def build_openapi(config: dict) -> dict:
     """Generate the OpenAPI in memory, with the fastgeoapi fixes at the source."""
     doc = get_oas(normalize_config(config))
     fix_queryables_response_schema(doc)
+    describe_tilesets(doc)
+    drop_unused_tags(doc)
     return doc
 
 
@@ -259,16 +266,41 @@ def build_routes(api: API, specs: frozenset[str] | None = None) -> list[Route]:
             skip_valid_check=True,
         )
 
+    # ADR-0010: which collections have a natively async tile provider.
+    # Probing instantiates the provider, so it runs off the loop once per
+    # configured collection; the dict lives with this table, which the
+    # sub-app rebuilds on every reload, and unknown names are not kept.
+    natives: dict[str, tuple | None] = {}
+
     async def collection_items_tiles(request: Request) -> Response:
-        return await execute(
-            api,
-            tiles_api.get_collection_tiles_data,
-            request,
+        args = (
             _path_param(request, "collection_id"),
             _path_param(request, "tileMatrixSetId"),
             _path_param(request, "tile_matrix"),
             _path_param(request, "tileRow"),
             _path_param(request, "tileCol"),
+        )
+        dataset = args[0]
+        if dataset in natives:
+            probe = natives[dataset]
+        else:
+            probe = await asyncio.to_thread(async_tiles.native_tile_provider, api, dataset)
+            if dataset in api.config["resources"]:
+                natives[dataset] = probe
+        if probe is not None:
+            # A native provider: awaited on the loop, no thread involved.
+            api_request = await APIRequest.from_starlette(request, api.locales)
+            headers, status, content = await async_tiles.get_collection_tiles_data(
+                api, api_request, *args, *probe
+            )
+            if status != HTTPStatus.NO_CONTENT:
+                content = apply_gzip(headers, content)
+            return _to_response(headers, status, content)
+        return await execute(
+            api,
+            tiles_api.get_collection_tiles_data,
+            request,
+            *args,
             skip_valid_check=True,
         )
 

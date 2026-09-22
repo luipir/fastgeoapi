@@ -9,10 +9,18 @@ Credentials come ONLY from each cloud's standard environment variables
 
 from __future__ import annotations
 
+import os
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from app.provider.storage.base import ObjectStore
 from app.provider.storage.obstore_ import ObstoreStore
+
+# The variables obstore reads an endpoint from, in every constructor.
+_ENDPOINT_VARIABLES = ("AWS_ENDPOINT_URL_S3", "AWS_ENDPOINT_URL", "AWS_ENDPOINT")
+_environment_lock = threading.Lock()
 
 _URL_SCHEMES = (
     "s3://",
@@ -37,7 +45,25 @@ def split_source(source: str) -> tuple[str, str]:
     return str(path.parent), path.name
 
 
-def _for_obstore(store_options: dict) -> dict:
+def _virtual_hosted(endpoint: str, base: str) -> str:
+    """Put the bucket in the host, where a virtual-hosted address carries it.
+
+    The two readers disagree about whose job this is. DuckDB takes the
+    service's host and prefixes the bucket itself; the object store builds
+    the address from the endpoint exactly as given, so the same options
+    would send it to the service with no bucket in the name at all. Since
+    ``store_options`` is written once, in DuckDB's vocabulary, the
+    translation reconciles them here — and leaves an endpoint that already
+    names the bucket alone, rather than doubling it.
+    """
+    bucket = base.split("://", 1)[-1].split("/", 1)[0]
+    scheme, _, host = endpoint.rpartition("://")
+    if not bucket or host.startswith(f"{bucket}."):
+        return endpoint
+    return f"{scheme}://{bucket}.{host}" if scheme else f"{bucket}.{host}"
+
+
+def _for_obstore(store_options: dict, base: str = "") -> dict:
     """Spell a dataset's store options the way obstore expects them.
 
     ``store_options`` are written in DuckDB's secret vocabulary, because
@@ -67,9 +93,41 @@ def _for_obstore(store_options: dict) -> dict:
     endpoint = options.pop("endpoint", None)
     if endpoint is not None:
         scheme = "https" if use_ssl else "http"
-        translated["endpoint"] = endpoint if "://" in str(endpoint) else f"{scheme}://{endpoint}"
+        endpoint = endpoint if "://" in str(endpoint) else f"{scheme}://{endpoint}"
+        if translated.get("virtual_hosted_style_request"):
+            endpoint = _virtual_hosted(endpoint, base)
+        translated["endpoint"] = endpoint
 
     return {**options, **translated}
+
+
+@contextmanager
+def _explicit_endpoint_wins(config: dict) -> Iterator[None]:
+    """Hide the environment's endpoint while a store with its own is built.
+
+    A dataset is read where it lives, not where the process banks. But
+    obstore 0.11 reads the standard variables in every constructor and,
+    for the endpoint, lets them win over an explicit ``endpoint`` in the
+    configuration: the store *reports* the explicit one while sending
+    its requests to the environment's. On a deployment whose
+    ``AWS_ENDPOINT_URL_S3`` names its own S3-compatible service, a public
+    dataset on AWS was therefore asked of the wrong host.
+
+    The variables are hidden only while the constructor runs and only
+    when the configuration names an endpoint of its own; credentials
+    stay visible, since a store on the deployment's own service still
+    needs them. The lock keeps two concurrent constructions from seeing
+    each other's half-restored environment.
+    """
+    if "endpoint" not in config:
+        yield
+        return
+    with _environment_lock:
+        hidden = {name: os.environ.pop(name) for name in _ENDPOINT_VARIABLES if name in os.environ}
+        try:
+            yield
+        finally:
+            os.environ.update(hidden)
 
 
 def load_store(base: str, store_options: dict | None = None) -> ObjectStore:
@@ -77,21 +135,22 @@ def load_store(base: str, store_options: dict | None = None) -> ObjectStore:
 
     ``store_options`` are the cloud store settings — ``region``,
     ``skip_signature`` for public data, ``endpoint`` for an
-    S3-compatible service. They are meaningless for a local path and
-    ignored there.
+    S3-compatible service (and an explicit one wins over the process
+    environment). They are meaningless for a local path and ignored
+    there.
     """
     if base.startswith(_URL_SCHEMES):
         from obstore.store import from_url
 
         if store_options:
-            # ty: `from_url` is overloaded per provider-specific config
-            # type, and ours is a plain mapping read from the tenant's
-            # configuration — the value is only known at runtime.
-            return ObstoreStore(
-                from_url(  # ty: ignore[no-matching-overload]
-                    base, config=_for_obstore(store_options)
+            config = _for_obstore(store_options, base)
+            with _explicit_endpoint_wins(config):
+                # ty: `from_url` is overloaded per provider-specific config
+                # type, and ours is a plain mapping read from the tenant's
+                # configuration — the value is only known at runtime.
+                return ObstoreStore(
+                    from_url(base, config=config)  # ty: ignore[no-matching-overload]
                 )
-            )
         return ObstoreStore(from_url(base))
     from obstore.store import LocalStore
 

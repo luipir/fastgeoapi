@@ -256,6 +256,9 @@ def ty(session: Session) -> None:
     args = session.posargs or ["check", "app", "tests"]
     _install_project(session)
     session.install(
+        # The OGC conformance validator for `tests/test_ogc_conformance_local.py`
+        # in the `dev` group, which these sessions do not install.
+        "ogcapi-registry==0.4.0",
         "ty",
         "pytest",
         "schemathesis>=4.0",
@@ -276,12 +279,17 @@ def ty(session: Session) -> None:
         # obstore ships the fsspec adapter module but declares neither an
         # `fsspec` extra nor the dependency, so name it explicitly.
         "fsspec>=2024.6",
+        # The pmtiles extra (ADR-0011): pure Python, named for the unlocked lanes.
+        "pmtiles>=3.7,<4",
         # The bucket end-to-end tests import boto3 against a local S3
         # (ministack). Both live in the `dev` group, which the locked
         # install brings along and this unlocked list did not — so `ty`
         # resolved on develop and failed everywhere else.
         "ministack>=1.5,<2",
         "boto3>=1.35",
+        # The blocking-call guard (ADR-0010) lives in the `dev` group;
+        # the unlocked lanes need it by name.
+        "blockbuster>=1.5,<2",
     )
     session.run("ty", *args)
 
@@ -291,6 +299,9 @@ def tests(session: Session) -> None:
     """Run the test suite."""
     _install_project(session)
     session.install(
+        # The OGC conformance validator for `tests/test_ogc_conformance_local.py`
+        # in the `dev` group, which these sessions do not install.
+        "ogcapi-registry==0.4.0",
         "coverage[toml]",
         "pytest",
         "pygments",
@@ -310,10 +321,15 @@ def tests(session: Session) -> None:
         # obstore ships the fsspec adapter module but declares neither an
         # `fsspec` extra nor the dependency, so name it explicitly.
         "fsspec>=2024.6",
+        # The pmtiles extra (ADR-0011): pure Python, named for the unlocked lanes.
+        "pmtiles>=3.7,<4",
         # Local S3 for the bucket end-to-end tests (see the `dev` group);
         # without these the unlocked lane silently skips them.
         "ministack>=1.5,<2",
         "boto3>=1.35",
+        # The blocking-call guard (ADR-0010) lives in the `dev` group;
+        # the unlocked lanes need it by name.
+        "blockbuster>=1.5,<2",
     )
     try:
         session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
@@ -340,6 +356,9 @@ def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
     _install_project(session)
     session.install(
+        # The OGC conformance validator for `tests/test_ogc_conformance_local.py`
+        # in the `dev` group, which these sessions do not install.
+        "ogcapi-registry==0.4.0",
         "pytest",
         "typeguard",
         "pygments",
@@ -359,10 +378,15 @@ def typeguard(session: Session) -> None:
         # obstore ships the fsspec adapter module but declares neither an
         # `fsspec` extra nor the dependency, so name it explicitly.
         "fsspec>=2024.6",
+        # The pmtiles extra (ADR-0011): pure Python, named for the unlocked lanes.
+        "pmtiles>=3.7,<4",
         # Local S3 for the bucket end-to-end tests (see the `dev` group);
         # without these the unlocked lane silently skips them.
         "ministack>=1.5,<2",
         "boto3>=1.35",
+        # The blocking-call guard (ADR-0010) lives in the `dev` group;
+        # the unlocked lanes need it by name.
+        "blockbuster>=1.5,<2",
     )
     session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
 

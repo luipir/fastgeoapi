@@ -4,6 +4,11 @@ on:
   - push
   - pull_request
 
+# This workflow only reads the repository and lints a document. It
+# declared nothing, so it ran on whatever the repository defaults grant.
+permissions:
+  contents: read
+
 jobs:
   spectral-oas:
     name: Lint and validate OpenAPI document for pygeoapi configuration
@@ -11,10 +16,10 @@ jobs:
     steps:
       # Check out the repository
       - name: Check out the repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
 
@@ -24,7 +29,7 @@ jobs:
           pip --version
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
@@ -44,7 +49,7 @@ jobs:
 
       # Run Spectral for OAS3 - highlights errors but doesn't fail the build
       - name: Run Spectral for OAS3
-        uses: stoplightio/spectral-action@latest
+        uses: stoplightio/spectral-action@6416fd018ae38e60136775066eb3e98172143141 # v0.8.13 (tag `latest`)
         continue-on-error: true
         with:
           file_glob: "pygeoapi-openapi.json"
@@ -56,10 +61,10 @@ jobs:
     steps:
       # Check out the repository
       - name: Check out the repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
 
@@ -69,7 +74,7 @@ jobs:
           pip --version
 
       - name: Install UV
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
@@ -83,9 +88,11 @@ jobs:
           UV_SYSTEM_PYTHON: 1
           UV_BREAK_SYSTEM_PACKAGES: 1
       # The ruleset version is pinned inside .spectral.owasp-top.10.yaml;
-      # the CLI is pinned here for the same reason.
+      # the CLI is pinned here for the same reason. `@6` was a major
+      # range, not a pin — the comment claimed something the line did not
+      # do, and any 6.x published upstream would have run here.
       - name: Install Spectral CLI
-        run: npm install -g @stoplight/spectral-cli@6
+        run: npm install -g @stoplight/spectral-cli@6.16.3
 
       - name: Show OWASP ruleset
         run: cat .spectral.owasp-top.10.yaml

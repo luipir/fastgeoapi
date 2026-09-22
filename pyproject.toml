@@ -1,6 +1,6 @@
 [project]
 name = "fastgeoapi"
-version = "0.0.12"
+version = "0.1.1"
 description = "fastgeoapi"
 authors = [{ name = "Francesco Bartoli", email = "francesco.bartoli@geobeyond.it" }]
 maintainers = [{ name = "Youssef Harby", email = "youssef.harby@geobeyond.it" }]
@@ -69,6 +69,9 @@ geoparquet = [
 martin_wrapper = [
     "martin-py>=0.1.0,<0.2; python_version < '3.13'",
 ]
+pmtiles = [
+    "pmtiles>=3.7,<4",
+]
 
 [dependency-groups]
 dev = [
@@ -99,6 +102,8 @@ dev = [
     # for public key") and 500s the test IdP token endpoint; pin until the
     # canaille/joserfc incompatibility is fixed upstream.
     "joserfc>=1.6,<1.7",
+    "blockbuster>=1.5,<2",
+    "ogcapi-registry==0.4.0",
 ]
 docs = [
     "mkdocstrings-python>=2.0.7",
@@ -248,8 +253,23 @@ markers = [
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-tag_format = "$version"
+# The repository tags `v0.0.12`, and the release workflow pushes
+# `v$version` (.github/workflows/release.yml). Without the prefix
+# commitizen finds no tag matching its configuration and cannot see the
+# last release at all, so `cz changelog` and `cz bump` both start from
+# nothing.
+tag_format = "v$version"
 version_scheme = "semver"
 version_provider = "pep621"
 update_changelog_on_bump = true
 major_version_zero = true
+
+# How the sections read in CHANGELOG.md. The commit types stay the
+# conventional `feat:`/`fix:` — that is what the parser matches on — and
+# only the headings are spelled out, since the changelog is read by
+# people who did not write the commits.
+[tool.commitizen.change_type_map]
+feat = "Features"
+fix = "Fixes"
+perf = "Performance"
+refactor = "Refactoring"

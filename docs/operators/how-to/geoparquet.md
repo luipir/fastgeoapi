@@ -4,9 +4,12 @@ icon: material/database-outline
 
 # :material-database-outline: GeoParquet provider
 
-A read-only OGC API Features provider that serves GeoParquet from a
-local path or an object-storage bucket, with CQL2 filters — spatial
-predicates included — evaluated inside [DuckDB](https://duckdb.org/).
+A read-only OGC API Features provider that serves
+[GeoParquet](https://geoparquet.org/) as a collection **without converting
+it first**: the file stays on a local path or in an object-storage bucket,
+and the query goes to it. CQL2 filters — spatial predicates included — are
+evaluated inside [DuckDB](https://duckdb.org/), so the network carries the
+answer rather than the dataset.
 
 Install the extra:
 
@@ -66,10 +69,13 @@ that filters on a partition column reads only the matching partitions.
 
 On a bucket DuckDB expands the wildcard itself, in one request. That
 also keeps the dataset isolated from the process environment: the
-object-store layer reads the standard variables in every constructor
-with no way to opt out, so a deployment whose `AWS_ENDPOINT_URL_S3`
-names its own store would send the listing there and be refused for a
-dataset that lives elsewhere.
+object-store layer reads the standard variables in every constructor,
+so a deployment whose `AWS_ENDPOINT_URL_S3` names its own store would
+send the listing there and be refused for a dataset that lives
+elsewhere. Where the object-store layer is the reader (the `obstore`
+fallback below, the PMTiles provider), an explicit `endpoint` in
+`store_options` wins over that variable: name the dataset's own
+endpoint (for AWS, `s3.<region>.amazonaws.com`) and the reads go there.
 
 On the `obstore` fallback below the objects are **listed** instead:
 DuckDB cannot expand a glob through that bridge — an explicit file works
