@@ -40,6 +40,8 @@ dependencies = [
     # the resolver see the 4.0 pre-releases.
     "fastmcp>=4.0.3,<5",
     "obstore>=0.11.1,<0.12",
+    "duckdb>=1.5.5",
+    "pmtiles>=3.7.0",
 ]
 
 [project.urls]
@@ -95,6 +97,8 @@ dev = [
     "openapi-resolver>=0.0.6,<0.0.7",
     "schemathesis>=4.0",
     "pytest-asyncio>=1.3,<1.4",
+    # VS Code launch.json runs its debug adapter from the project venv.
+    "debugpy>=1.8.22",
     "nox[uv]>=2025.11.12",
     "pytest-iam>=0.2.0",
     "canaille[sqlite]>=0.0.74",
@@ -116,7 +120,7 @@ docs = [
 # Local build, not yet on PyPI — see the `martin_wrapper` extra above.
 # Path is relative to this file; rebuild with `maturin build --release`
 # in the `martin-py` crate if the wheel goes missing.
-martin-py = { path = "../martin/target/wheels/martin_py-0.1.0-cp312-cp312-manylinux_2_39_x86_64.whl" }
+martin-py = { path = "../martin/target/wheels/martin_py-0.1.0-cp312-cp312-linux_x86_64.whl" }
 
 [tool.hatch.build.targets.sdist]
 include = [
