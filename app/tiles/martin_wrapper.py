@@ -77,6 +77,30 @@ def _srid_from_storage_crs(provider: dict) -> int:
     return int(match.group(1)) if match else _DEFAULT_SRID
 
 
+def _geoparquet_location(data: str) -> str:
+    """A remote directory as the glob martin's ``read_parquet`` needs.
+
+    Martin hands a remote location straight to DuckDB's ``read_parquet``,
+    which reads a trailing-slash URL as one object and gets a 404 for it,
+    so a bucket prefix is expanded the way ``duckdb_.scan_expression``
+    does for the native reader. A local path is left alone: martin only
+    accepts an existing file there, never a directory or a glob.
+
+    Parameters
+    ----------
+    data : str
+        A GeoParquet provider's ``data``: file, glob or directory.
+
+    Returns
+    -------
+    str
+        The location to give martin as ``geoparquet``.
+    """
+    if "://" not in data or data.endswith(".parquet") or "*" in data:
+        return data
+    return f"{data.rstrip('/')}/**/*.parquet"
+
+
 def _martin_config_from_pygeoapi(pygeoapi_config: dict) -> dict[str, Any]:
     """Derive a martin-py config from an already-loaded pygeoapi config.
 
@@ -134,7 +158,7 @@ def _martin_config_from_pygeoapi(pygeoapi_config: dict) -> dict[str, Any]:
             elif name in _DUCKDB_PROVIDER_NAMES or data.endswith(".parquet"):
                 duckdb_sources.append(
                     {
-                        "geoparquet": data,
+                        "geoparquet": _geoparquet_location(data),
                         "layer_id": resource_id,
                         "geometry_column": provider.get("geometry_column", "geom"),
                         "srid": _srid_from_storage_crs(provider),

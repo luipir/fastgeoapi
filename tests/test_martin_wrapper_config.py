@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 from app.tiles.martin_wrapper import _martin_config_from_pygeoapi
@@ -79,6 +80,34 @@ def test_geoparquet_provider_defaults_geometry_column_and_srid():
     source = _martin_config_from_pygeoapi(config)["duckdb"]["sources"][0]
     assert source["geometry_column"] == "geom"
     assert source["srid"] == 4326
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ("s3://bucket/theme=places/", "s3://bucket/theme=places/**/*.parquet"),
+        ("s3://bucket/theme=places", "s3://bucket/theme=places/**/*.parquet"),
+        ("s3://bucket/places.parquet", "s3://bucket/places.parquet"),
+        ("s3://bucket/part-*.parquet", "s3://bucket/part-*.parquet"),
+        ("tests/data/parcels", "tests/data/parcels"),
+    ],
+)
+def test_remote_geoparquet_directory_becomes_a_glob(data, expected):
+    config = {
+        "resources": {
+            "places": {
+                "providers": [
+                    {
+                        "type": "feature",
+                        "name": "app.provider.geoparquet.GeoParquetProvider",
+                        "data": data,
+                    }
+                ]
+            }
+        }
+    }
+    source = _martin_config_from_pygeoapi(config)["duckdb"]["sources"][0]
+    assert source["geoparquet"] == expected
 
 
 def test_pmtiles_detected_by_extension_regardless_of_provider_name():
